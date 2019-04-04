@@ -24,7 +24,7 @@ class Strategy():
         pass
 
     def handle_update(self, inx, price, factors):
-        B = factors[:,[5,7,8,9]]
+        B = factors[:,[1,2,3]]
         f_cov = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/f_cov.npy')
         d_cov = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/d_cov.npy')
         mu_e = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/mu_e.npy')
