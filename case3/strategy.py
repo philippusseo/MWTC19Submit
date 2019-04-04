@@ -24,13 +24,17 @@ class Strategy():
         pass
 
     def handle_update(self, inx, price, factors):
-        """Put your logic here
-        Args:
-            inx: zero-based inx in days
-            price: [num_assets, ]
-            factors: [num_assets, num_factors]
-        Return:
-            allocation: [num_assets, ]
-        """
+        B = factors[:,[5,7,8,9]]
+        f_cov = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/f_cov.npy')
+        d_cov = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/d_cov.npy')
+        mu_e = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/mu_e.npy')
+        r_cov = np.add(np.matmul(np.matmul(B,f_cov),np.transpose(B)),d_cov) 
+        r_cov_inv = np.linalg.inv(r_cov)
+        one = np.repeat(1, r_cov.shape[0])
+        denom_tan = np.matmul(np.matmul(np.transpose(one),r_cov_inv),mu_e)
+        denom_gmv = np.matmul(np.matmul(np.transpose(one),r_cov_inv),one)
+        w_gmv  = (1/denom_gmv) * np.matmul(r_cov_inv, one)
+        w_tan = (1/denom_tan) * np.matmul(r_cov_inv, mu_e)
+        w = np.add(1.1*w_gmv,(1-1.1)*w_tan)
         assert price.shape[0] == factors.shape[0]
-        return np.array([1.0] * price.shape[0])
+        return w
