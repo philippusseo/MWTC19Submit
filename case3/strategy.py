@@ -24,7 +24,9 @@ class Strategy():
         pass
 
     def handle_update(self, inx, price, factors):
-        B = factors[:,[1,2,3]]
+        al_value = ((factors[:,1]-factors[:,0])/factors[:,9])
+        weighted_avg_out = (price * factors[:,2])
+        B = np.transpose(np.vstack([al_value,factors[:,3],weighted_avg_out]))
         f_cov = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/f_cov.npy')
         d_cov = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/d_cov.npy')
         mu_e = np.load('/Users/phillipseo/Docs/trading_platform/MWTC19Submit-master/case3/data/mu_e.npy')
