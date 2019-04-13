@@ -2,6 +2,7 @@ import argparse
 import random
 import numpy as np
 import pandas as pd
+import collections as col
 
 from client.exchange_service.client import BaseExchangeServerClient
 from protos.order_book_pb2 import Order
@@ -28,8 +29,11 @@ class ExampleMarketMaker(BaseExchangeServerClient):
 
     def handle_exchange_update(self, exchange_update_response):
         print(exchange_update_response.competitor_metadata)
-        h_data = pd.read_csv('pnl.csv')
-        h_data.loc[ExampleMarketMaker.index,'pnl'] = exchange_update_response.competitor_metadata.pnl
+        for fill in self.latest_fills:
+            if self.exposure_counter[fill.order.order_id] > 0:
+                self.exposure_counter[fill.order.order_id] = fill.remaining_quantity
+            else:
+                self.exposure_counter[fill.order.order_id] = -fill.remaining_quantity
         print("number of orders: " + str(len(self._orderids)))
         print("long?: " + str(self.long))
         # 10% of the time, cancel two arbitrary orders
@@ -56,38 +60,43 @@ class ExampleMarketMaker(BaseExchangeServerClient):
         spread = 0.02
         order_in = False
         if self.diff_series['2'][-1]-self.diff_series['2'][0] < -0.03 and not self.long:
-            bid_resp = self.place_order(self._make_order('N', q1,\
+            n_resp = self.place_order(self._make_order('N', q1,\
             n_price, spread, True))
-            ask_resp = self.place_order(self._make_order('M', q2,\
+            m_resp = self.place_order(self._make_order('M', q2,\
                                                     m_price, spread, False))
             order_in = True
             self.long = True
             action = "LONG N"
             print("LONG N")
         elif self.diff_series['2'][-1]-self.diff_series['2'][0] > 0.03 and self.long:
-            ask_resp = self.place_order(self._make_order('N', q1,\
+            n_resp = self.place_order(self._make_order('N', q1,\
             n_price, spread, False))
-            bid_resp = self.place_order(self._make_order('M', q2,\
+            m_resp = self.place_order(self._make_order('M', q2,\
                                                m_price, spread, True))
             order_in = True
             self.long = False
             print("SHORT N")
             action = "SHORT N"
         if order_in:
-            h_data.loc[ExampleMarketMaker.index,'actions'] = action
-            if type(bid_resp) != PlaceOrderResponse:
-                print(bid_resp)
+            if type(n_resp) != PlaceOrderResponse:
+                print(n_resp)
             else:
                 self._orderids.add(bid_resp.order_id)
-                if len(self._orderids) == 3:
-                    self.cancel_order(self._orderids.pop())
-            if type(ask_resp) != PlaceOrderResponse:
-                print(ask_resp)
+            if action == "LONG N":
+                    self.exposure_counter[n_resp.order_id] = q1
+                else:
+                    self.exposure_counter[n_resp.order_id] = -q1
+            if type(m_resp) != PlaceOrderResponse:
+                print(m_resp)
             else:
-                self._orderids.add(ask_resp.order_id)
-                if len(self._orderids) == 3:
-                    self.cancel_order(self._orderids.pop())
-        h_data.to_csv('pnl.csv', index = False)
+                self._orderids.add(m_resp.order_id)
+                if action == "LONG N":
+                    self.exposure_counter[m_resp.order_id] = -q2
+                else:
+                    self.exposure_counter[m_resp.order_id] = q2
+        while (abs(sum(self.exposure_counter.values())) > 40):
+            cancel = self._orderids.pop()
+            del self.exposure_counter[cancel]
         ExampleMarketMaker.index+=1
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the exchange client')
