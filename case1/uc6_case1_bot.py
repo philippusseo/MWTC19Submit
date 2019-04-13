@@ -20,6 +20,7 @@ class ExampleMarketMaker(BaseExchangeServerClient):
         self.diff_series = {'1':[],'2':[],'3':[],'4':[],'5':[]}
         self._orderids = set([])
         self.long = False
+        self.exposure_counter = col.Counter()
 
     def _make_order(self, asset_code, quantity, base_price, spread, bid=True):
         return Order(asset_code = asset_code, quantity=quantity if bid else -1*quantity,
@@ -81,8 +82,8 @@ class ExampleMarketMaker(BaseExchangeServerClient):
             if type(n_resp) != PlaceOrderResponse:
                 print(n_resp)
             else:
-                self._orderids.add(bid_resp.order_id)
-            if action == "LONG N":
+                self._orderids.add(n_resp.order_id)
+                if action == "LONG N":
                     self.exposure_counter[n_resp.order_id] = q1
                 else:
                     self.exposure_counter[n_resp.order_id] = -q1
